@@ -1,0 +1,8 @@
+Config(
+    title: "Game of Life 2D",
+    size: (500, 500),
+    resizable: false,
+    fullscreen: false,
+    maximized: false,
+    grid_size: (10, 10),
+)
