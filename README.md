@@ -2,7 +2,7 @@
 
 This is a small project testing the capabilities of the Coffee Engine.
 
-All calculations are done on the CPU, there are no shaders.
+All calculations are done on the CPU.
 
 # Controls
 - Left Click - Set Cell state to Alive at cursor location
