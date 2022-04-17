@@ -2,17 +2,6 @@ use crate::{Cell, CellState, config::Config};
 use rayon::prelude::*;
 use coffee::{Game, input::{KeyboardAndMouse, mouse, keyboard}, graphics::{Batch, Window, Frame, Image, Color, Rectangle, Sprite, Point}, load::{Task, Join}, Timer};
 
-const NEIGHBORS: [(f32, f32); 8] = [
-    (-1.0, -1.0),
-    (-1.0,  0.0),
-    (-1.0,  1.0),
-    ( 0.0, -1.0),
-    ( 0.0,  1.0),
-    ( 1.0, -1.0),
-    ( 1.0,  0.0),
-    ( 1.0,  1.0),
-];
-
 pub struct State {
     cells: Vec<Cell>,
     batch: Batch,
@@ -39,10 +28,7 @@ impl State {
     }
 
     fn load_palette() -> Task<Image> {
-        return Task::using_gpu(|gpu| Image::from_colors(gpu, &[
-            Color::RED,
-            Color::BLUE,
-        ]))
+        return Task::using_gpu(|gpu| Image::from_colors(gpu, &[Color::GREEN]))
     }
 }
 
@@ -50,7 +36,7 @@ impl Game for State {
     type Input = KeyboardAndMouse;
     type LoadingScreen = ();
 
-    const TICKS_PER_SECOND: u16 = 20;
+    const TICKS_PER_SECOND: u16 = 144;
 
     fn load(_window: &Window,) -> Task<State> {
         let config = Config::load();
@@ -108,19 +94,29 @@ impl Game for State {
             let config = &self.config;
 
             self.cells.par_iter_mut().for_each(move |cell| {
-                let count = NEIGHBORS.iter().fold(0, |acc, neighbor| {
-                    let target_point = Point::new(cell.position.x + neighbor.0, cell.position.y + neighbor.1);
+                let mut count = 0;
 
-                    if (target_point.x >= 0.0 && target_point.x < config.grid_size.0 as f32) && (target_point.y >= 0.0 && target_point.y < config.grid_size.1 as f32) {
-                        let target_cell: CellState = cloned_cells.iter().filter(|c| c.position == target_point).cloned().collect::<Vec<Cell>>()[0].state;
-
-                        if target_cell == CellState::ALIVE {
-                            return acc + 1;
+                for &x_off in [-1, 0, 1].iter() {
+                    for &y_off in [-1, 0, 1].iter() {
+                        if x_off == 0 && y_off == 0 {
+                            continue;
+                        }
+                    
+                        let neighbor_position = Point::new(cell.position.x + x_off as f32, cell.position.y + y_off as f32);
+                        if neighbor_position.x < 0.0
+                            || neighbor_position.x > config.grid_size.0 as f32 - 1.0
+                            || neighbor_position.y < 0.0
+                            || neighbor_position.y > config.grid_size.1 as f32  -1.0 {
+                            continue;
+                        }
+                    
+                        let neighbor_index = (neighbor_position.x + (neighbor_position.y * config.grid_size.0 as f32)) as usize;
+                    
+                        if cloned_cells[neighbor_index].state == CellState::ALIVE {
+                            count += 1;
                         }
                     }
-
-                    return acc;
-                });
+                }
 
                 match cell.state {
                     CellState::ALIVE => if count < 2 || count > 3 { 
@@ -129,7 +125,6 @@ impl Game for State {
                     CellState::DEAD => if count == 3 { 
                         cell.state = CellState::ALIVE;
                      },
-                    _ => (),
                 }
             });
         }
@@ -138,19 +133,22 @@ impl Game for State {
     fn draw(&mut self, frame: &mut Frame, timer: &Timer) {
         frame.clear(Color::BLACK);
 
-        let sprites = self.cells.par_iter().map(|cell| {
-            let position = cell.position * self.scale;
+        let sprites = self.cells
+            .par_iter()
+            .filter(|cell| cell.state == CellState::ALIVE)
+            .map(|cell| {
+                let position = cell.position * self.scale;
 
-           return Sprite {
-               source: Rectangle {
-                   x: if cell.state == CellState::ALIVE { 1 } else { 0 },
-                   y: 0,
-                   width: 1,
-                   height:1,
-               },
-               position: Point::new(position.x , position.y),
-               scale: (self.scale, self.scale),
-           } 
+                return Sprite {
+                    source: Rectangle {
+                        x: 0,
+                        y: 0,
+                        width: 1,
+                        height:1,
+                    },
+                    position: Point::new(position.x , position.y),
+                    scale: (self.scale, self.scale),
+                } 
         });
 
         self.batch.clear();
