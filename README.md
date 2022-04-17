@@ -1,6 +1,6 @@
 # 2D Cellular Automata
 
-This is a small project testing the capabilities of the Coffee Engine.
+This is a small project testing the capabilities of the Coffee Engine with Rust.
 
 All calculations are done on the CPU.
 
